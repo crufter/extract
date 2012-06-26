@@ -16,6 +16,7 @@ import(
 	"net/url"
 	"strconv"
 	"math"
+	"fmt"
 )
 
 const(
@@ -29,7 +30,7 @@ type Rules struct {
 	R 		map[string]interface{}
 }
 
-func (r *Rules) ExtractForm(dat url.Values) (map[string]interface{}, bool) {
+func (r *Rules) ExtractForm(dat url.Values) (map[string]interface{}, error) {
 	return r.Extract(map[string][]string(dat))
 }
 
@@ -165,72 +166,72 @@ func handleBoolS(val []string, rules map[string]interface{}) ([]bool, bool) {
 	})
 }
 
-func (r *Rules) Extract(dat map[string][]string) (map[string]interface{}, bool) {
+func (r *Rules) Extract(dat map[string][]string) (map[string]interface{}, error) {
 	ret := map[string]interface{}{}
 	// missing := false
 	for i, v := range r.R {
 		obj, is_obj := v.(map[string]interface{})
 		val, hasval := dat[i]
 		if !is_obj && hasval {	// Without any check
-			ret[i] = val
+			ret[i] = val[0]
 		} else {
 			_, must := obj["must"];
 			if must && (!hasval || len(val) == 0) {
-				return ret, false
+				return ret, fmt.Errorf("Mandatory field \"%s\" is missing or empty.", i)
 			} else if !hasval || len(val) == 0 {
 				continue
 			}
 			typ, hastype := obj["type"]
 			if !hastype {
 				if len(val) > 1 {
-					return ret, false
+					return ret, fmt.Errorf("Typeless (string) field \"%s\" sent with multiple values.", i)
 				}
 				s, passed := handleString(val[0], obj)
 				if passed {
 					ret[i] = s
 				} else if must {
-					return ret, false
+					return ret, fmt.Errorf("Typeless (string) field \"%s\" not passed.", i)
 				}
 			} else {
 				// passed := false
 				switch typ {
 					case "bools":
 						s, pass := handleBoolS(val, obj)
-						if !pass { return ret, false } else { ret[i] = s }
+						if !pass { return ret, fmt.Errorf("Slice field \"%s\" not passed.", i) } else { ret[i] = s }
 					case "strings":
 						s, pass := handleStringS(val, obj)
-						if !pass { return ret, false } else { ret[i] = s }
+						if !pass { return ret, fmt.Errorf("Slice field \"%s\" not passed.", i) } else { ret[i] = s }
 					case "ints":
 						s, pass := handleIntS(val, obj)
-						if !pass { return ret, false } else { ret[i] = s }
+						if !pass { return ret, fmt.Errorf("Slice field \"%s\" not passed.", i) } else { ret[i] = s }
 					case "floats":
 						s, pass := handleFloatS(val, obj)
-						if !pass { return ret, false } else { ret[i] = s }
+						if !pass { return ret, fmt.Errorf("Slice field \"%s\" not passed.", i) } else { ret[i] = s }
 					default:
 						if len(val) > 1 {
-							return ret, false
+							return ret, fmt.Errorf("Field \"%s\" sent with multiple values.", i)
 						}
 						switch typ {
 						case "bool":
 							s, pass := handleBool(val[0], obj)
-							if !pass { return ret, false } else { ret[i] = s }
+							if !pass { return ret, fmt.Errorf("Field \"%s\" not passed.", i) } else { ret[i] = s }
 						case "string":
 							s, pass := handleString(val[0], obj)
-							if !pass { return ret, false } else { ret[i] = s }
+							if !pass { return ret, fmt.Errorf("Field \"%s\" not passed.", i) } else { ret[i] = s }
 						case "int":
 							s, pass := handleInt(val[0], obj)
-							if !pass { return ret, false } else { ret[i] = s }
+							if !pass { return ret, fmt.Errorf("Field \"%s\" not passed.", i) } else { ret[i] = s }
 						case "float":
 							s, pass := handleFloat(val[0], obj)
-							if !pass { return ret, false } else { ret[i] = s }
+							if !pass { return ret, fmt.Errorf("Field \"%s\" not passed.", i) } else { ret[i] = s }
 						default:
-							return ret, false
+							return ret, fmt.Errorf("Field \"%s\" has unknown type.", i)
 						}
 				}
 			}
 		}
 	}
-	return ret, true
+	return ret, nil
 }
 
 func (r *Rules) ResetRules(templ map[string]interface{}) {

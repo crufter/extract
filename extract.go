@@ -166,15 +166,26 @@ func handleBoolS(val []string, rules map[string]interface{}) ([]bool, bool) {
 	})
 }
 
+func isNum(i interface{}) bool {
+	_, in := i.(int)
+	_, fl := i.(float64)
+	return in || fl
+}
+
 func (r *Rules) Extract(dat map[string][]string) (map[string]interface{}, error) {
 	ret := map[string]interface{}{}
 	// missing := false
 	for i, v := range r.R {
-		obj, is_obj := v.(map[string]interface{})
 		val, hasval := dat[i]
-		if !is_obj && hasval {	// Without any check
+		isnum := isNum(v)
+		if isnum {	// Without any check
 			ret[i] = val[0]
-		} else {
+		} else if str, is_str := v.(string); is_str && str == "must" {
+			if !hasval || len(val) == 0 {
+				return ret, fmt.Errorf("Mandatory field \"%s\" is missing or empty.", i)
+			}
+			ret[i] = val[0]
+		} else if obj, is_obj := v.(map[string]interface{}); is_obj {
 			_, must := obj["must"];
 			if must && (!hasval || len(val) == 0) {
 				return ret, fmt.Errorf("Mandatory field \"%s\" is missing or empty.", i)
@@ -229,6 +240,8 @@ func (r *Rules) Extract(dat map[string][]string) (map[string]interface{}, error)
 						}
 				}
 			}
+		} else {
+			return nil, fmt.Errorf("Can't interpret rule command.")
 		}
 	}
 	return ret, nil

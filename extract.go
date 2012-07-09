@@ -178,8 +178,10 @@ func (r *Rules) Extract(dat map[string][]string) (map[string]interface{}, error)
 	for i, v := range r.R {
 		val, hasval := dat[i]
 		isnum := isNum(v)
-		if isnum && hasval {	// Without any check
-			ret[i] = val[0]
+		if isnum  {	// Without any check
+			if hasval {
+				ret[i] = val[0]
+			}
 		} else if str, is_str := v.(string); is_str && str == "must" {
 			if !hasval || len(val) == 0 {
 				return ret, fmt.Errorf("Mandatory field \"%s\" is missing or empty.", i)

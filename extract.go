@@ -178,7 +178,7 @@ func (r *Rules) Extract(dat map[string][]string) (map[string]interface{}, error)
 	for i, v := range r.R {
 		val, hasval := dat[i]
 		isnum := isNum(v)
-		if isnum {	// Without any check
+		if isnum && hasval {	// Without any check
 			ret[i] = val[0]
 		} else if str, is_str := v.(string); is_str && str == "must" {
 			if !hasval || len(val) == 0 {

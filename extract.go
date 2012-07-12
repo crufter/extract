@@ -242,6 +242,8 @@ func (r *Rules) Extract(dat map[string][]string) (map[string]interface{}, error)
 						}
 				}
 			}
+		} else if boo, is_bool := v.(bool); is_bool && boo == false {
+			continue
 		} else {
 			return nil, fmt.Errorf("Can't interpret rule command.")
 		}

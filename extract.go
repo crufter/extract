@@ -36,13 +36,23 @@ func (r *Rules) ExtractForm(dat url.Values) (map[string]interface{}, error) {
 
 func minMax(i int64, rules map[string]interface{}) bool {
 	if min, hasmin := rules[min]; hasmin {
-		if i < int64(min.(float64)) {
-			return false
+		switch val := min.(type) {
+		case float64:
+			return i >= int64(val)
+		case int:
+			return i >= int64(val)
+		default:
+			panic("Unkown min type at extract.")
 		}
 	}
 	if max, hasmax := rules[max]; hasmax {
-		if i > int64(max.(float64)) {
-			return false
+		switch val := max.(type) {
+		case float64:
+			return i <= int64(val)
+		case int:
+			return i <= int64(val)
+		default:
+			panic("Unkown max type at extract.")
 		}
 	}
 	return true

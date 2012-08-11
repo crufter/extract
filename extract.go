@@ -24,6 +24,8 @@ const(
 	max 		=	"max"
 	min_amt 	=	"min_amt"
 	max_amt 	=	"max_amt"
+	single_err	= 	"Field \"%s\" not passed."
+	slice_err	= 	"Slice field \"%s\" not passed."
 )
 
 type Rules struct {
@@ -183,6 +185,19 @@ func isNum(i interface{}) bool {
 }
 
 func (r *Rules) Extract(dat map[string][]string) (map[string]interface{}, error) {
+	return r.extract(dat, nil)
+}
+
+// field: 1									// Field will be in ret without check if it exists in input.
+// field: false								// Field will be entirely ignored, exists or not in input.
+// field: "must"							// Field is mandatory, error occurs when not exists in input. Field is handled as string.
+// field: {"type":"number"}					// Field is handled as number, if it exists in input. If not a number, error will be raised. *
+// field: {"type":"number", "must": true}	// Field is handled as number, if i exists in input, error will be raised if not exists. If not a number, error will be raised.	*
+//
+// Generally, a field must satisfy all requirements to pass, otherwise an error will be raised.
+// Only exception if a field does not exist. Then, it will be simply left from ret out unless "must" is specified.
+// If "must" is specified and field does not exist, an error will be raised.
+func (r *Rules) extract(dat map[string][]string, unknown_type_handler func(val []string, rules map[string]interface{})(interface{}, error)) (map[string]interface{}, error) {
 	ret := map[string]interface{}{}
 	// missing := false
 	for i, v := range r.R {
@@ -220,16 +235,16 @@ func (r *Rules) Extract(dat map[string][]string) (map[string]interface{}, error)
 				switch typ {
 					case "bools":
 						s, pass := handleBoolS(val, obj)
-						if !pass { return ret, fmt.Errorf("Slice field \"%s\" not passed.", i) } else { ret[i] = s }
+						if !pass { return ret, fmt.Errorf(slice_err, i) } else { ret[i] = s }
 					case "strings":
 						s, pass := handleStringS(val, obj)
-						if !pass { return ret, fmt.Errorf("Slice field \"%s\" not passed.", i) } else { ret[i] = s }
+						if !pass { return ret, fmt.Errorf(slice_err, i) } else { ret[i] = s }
 					case "ints":
 						s, pass := handleIntS(val, obj)
-						if !pass { return ret, fmt.Errorf("Slice field \"%s\" not passed.", i) } else { ret[i] = s }
+						if !pass { return ret, fmt.Errorf(slice_err, i) } else { ret[i] = s }
 					case "floats":
 						s, pass := handleFloatS(val, obj)
-						if !pass { return ret, fmt.Errorf("Slice field \"%s\" not passed.", i) } else { ret[i] = s }
+						if !pass { return ret, fmt.Errorf(slice_err, i) } else { ret[i] = s }
 					default:
 						if len(val) > 1 {
 							return ret, fmt.Errorf("Field \"%s\" sent with multiple values.", i)
@@ -237,18 +252,23 @@ func (r *Rules) Extract(dat map[string][]string) (map[string]interface{}, error)
 						switch typ {
 						case "bool":
 							s, pass := handleBool(val[0], obj)
-							if !pass { return ret, fmt.Errorf("Field \"%s\" not passed.", i) } else { ret[i] = s }
+							if !pass { return ret, fmt.Errorf(single_err, i) } else { ret[i] = s }
 						case "string":
 							s, pass := handleString(val[0], obj)
-							if !pass { return ret, fmt.Errorf("Field \"%s\" not passed.", i) } else { ret[i] = s }
+							if !pass { return ret, fmt.Errorf(single_err, i) } else { ret[i] = s }
 						case "int":
 							s, pass := handleInt(val[0], obj)
-							if !pass { return ret, fmt.Errorf("Field \"%s\" not passed.", i) } else { ret[i] = s }
+							if !pass { return ret, fmt.Errorf(single_err, i) } else { ret[i] = s }
 						case "float":
 							s, pass := handleFloat(val[0], obj)
-							if !pass { return ret, fmt.Errorf("Field \"%s\" not passed.", i) } else { ret[i] = s }
+							if !pass { return ret, fmt.Errorf(single_err, i) } else { ret[i] = s }
 						default:
-							return ret, fmt.Errorf("Field \"%s\" has unknown type.", i)
+							if unknown_type_handler == nil {
+								return ret, fmt.Errorf("Field \"%s\" has unknown type.", i)
+							} else {
+								s, err := unknown_type_handler(val, obj)
+								if err != nil { return ret, fmt.Errorf("Outside field \"%v\" not passed: %v", i, err.Error()) } else { ret[i] = s }
+							}
 						}
 				}
 			}

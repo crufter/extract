@@ -208,14 +208,14 @@ func (r *Rules) extract(dat map[string][]string, unknown_type_handler func(val [
 				ret[i] = val[0]
 			}
 		} else if str, is_str := v.(string); is_str && str == "must" {
-			if !hasval || len(val) == 0 {
-				return ret, fmt.Errorf("Mandatory field \"%s\" is missing or empty.", i)
+			if !hasval {
+				return ret, fmt.Errorf("Mandatory field \"%s\" is missing.", i)
 			}
 			ret[i] = val[0]
 		} else if obj, is_obj := v.(map[string]interface{}); is_obj {
 			_, must := obj["must"];
-			if must && (!hasval || len(val) == 0) {
-				return ret, fmt.Errorf("Mandatory field \"%s\" is missing or empty.", i)
+			if must && !hasval {
+				return ret, fmt.Errorf("Mandatory field \"%s\" is missing.", i)
 			} else if !hasval || len(val) == 0 {
 				continue
 			}

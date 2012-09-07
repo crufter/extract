@@ -12,24 +12,24 @@
 // János Dobronszki @ Opesun
 package extract
 
-import(
+import (
+	"fmt"
+	"math"
 	"net/url"
 	"strconv"
-	"math"
-	"fmt"
 )
 
-const(
-	min 		=	"min"
-	max 		=	"max"
-	min_amt 	=	"min_amt"
-	max_amt 	=	"max_amt"
-	single_err	= 	"Field \"%s\" not passed."
-	slice_err	= 	"Slice field \"%s\" not passed."
+const (
+	min        = "min"
+	max        = "max"
+	min_amt    = "min_amt"
+	max_amt    = "max_amt"
+	single_err = "Field \"%s\" not passed."
+	slice_err  = "Slice field \"%s\" not passed."
 )
 
 type Rules struct {
-	R 		map[string]interface{}
+	R map[string]interface{}
 }
 
 func (r *Rules) ExtractForm(dat url.Values) (map[string]interface{}, error) {
@@ -73,7 +73,7 @@ func handleInt(val string, rules map[string]interface{}) (int64, bool) {
 	if err != nil {
 		return 0, false
 	}
-	size_ok := minMax(i, rules)	// This is so uncorrect. TODO: rethink
+	size_ok := minMax(i, rules) // This is so uncorrect. TODO: rethink
 	if !size_ok {
 		return i, false
 	}
@@ -85,7 +85,7 @@ func handleFloat(val string, rules map[string]interface{}) (float64, bool) {
 	if err != nil {
 		return 0, false
 	}
-	size_ok := minMax(int64(math.Ceil(f)), rules)	// This is so uncorrect. TODO: rethink
+	size_ok := minMax(int64(math.Ceil(f)), rules) // This is so uncorrect. TODO: rethink
 	if !size_ok {
 		return f, false
 	}
@@ -133,49 +133,49 @@ func allOk(val []string, rules map[string]interface{}, f func(int) bool) bool {
 func handleStringS(val []string, rules map[string]interface{}) ([]string, bool) {
 	ret := []string{}
 	return ret, allOk(val, rules,
-	func(i int) bool {
-		if str, ok := handleString(val[i], rules); ok {
-			ret = append(ret, str)
-			return true
-		}
-		return false
-	})
+		func(i int) bool {
+			if str, ok := handleString(val[i], rules); ok {
+				ret = append(ret, str)
+				return true
+			}
+			return false
+		})
 }
 
 func handleIntS(val []string, rules map[string]interface{}) ([]int64, bool) {
 	ret := []int64{}
 	return ret, allOk(val, rules,
-	func(i int) bool {
-		if fl, ok := handleInt(val[i], rules); ok {
-			ret = append(ret, fl)
-			return true
-		}
-		return false
-	})
+		func(i int) bool {
+			if fl, ok := handleInt(val[i], rules); ok {
+				ret = append(ret, fl)
+				return true
+			}
+			return false
+		})
 }
 
 func handleFloatS(val []string, rules map[string]interface{}) ([]float64, bool) {
 	ret := []float64{}
 	return ret, allOk(val, rules,
-	func(i int) bool {
-		if fl, ok := handleFloat(val[i], rules); ok {
-			ret = append(ret, fl)
-			return true
-		}
-		return false
-	})
+		func(i int) bool {
+			if fl, ok := handleFloat(val[i], rules); ok {
+				ret = append(ret, fl)
+				return true
+			}
+			return false
+		})
 }
 
 func handleBoolS(val []string, rules map[string]interface{}) ([]bool, bool) {
 	ret := []bool{}
 	return ret, allOk(val, rules,
-	func(i int) bool {
-		if b, ok := handleBool(val[i], rules); ok {
-			ret = append(ret, b)
-			return true
-		}
-		return false
-	})
+		func(i int) bool {
+			if b, ok := handleBool(val[i], rules); ok {
+				ret = append(ret, b)
+				return true
+			}
+			return false
+		})
 }
 
 func isNum(i interface{}) bool {
@@ -197,13 +197,13 @@ func (r *Rules) Extract(dat map[string][]string) (map[string]interface{}, error)
 // Generally, a field must satisfy all requirements to pass, otherwise an error will be raised.
 // Only exception if a field does not exist. Then, it will be simply left from ret out unless "must" is specified.
 // If "must" is specified and field does not exist, an error will be raised.
-func (r *Rules) extract(dat map[string][]string, unknown_type_handler func(val []string, rules map[string]interface{})(interface{}, error)) (map[string]interface{}, error) {
+func (r *Rules) extract(dat map[string][]string, unknown_type_handler func(val []string, rules map[string]interface{}) (interface{}, error)) (map[string]interface{}, error) {
 	ret := map[string]interface{}{}
 	// missing := false
 	for i, v := range r.R {
 		val, hasval := dat[i]
 		isnum := isNum(v)
-		if isnum  {	// Without any check
+		if isnum { // Without any check
 			if hasval {
 				ret[i] = val[0]
 			}
@@ -213,7 +213,7 @@ func (r *Rules) extract(dat map[string][]string, unknown_type_handler func(val [
 			}
 			ret[i] = val[0]
 		} else if obj, is_obj := v.(map[string]interface{}); is_obj {
-			_, must := obj["must"];
+			_, must := obj["must"]
 			if must && !hasval {
 				return ret, fmt.Errorf("Mandatory field \"%s\" is missing.", i)
 			} else if !hasval || len(val) == 0 {
@@ -233,43 +233,79 @@ func (r *Rules) extract(dat map[string][]string, unknown_type_handler func(val [
 			} else {
 				// passed := false
 				switch typ {
-					case "bools":
-						s, pass := handleBoolS(val, obj)
-						if !pass { return ret, fmt.Errorf(slice_err, i) } else { ret[i] = s }
-					case "strings":
-						s, pass := handleStringS(val, obj)
-						if !pass { return ret, fmt.Errorf(slice_err, i) } else { ret[i] = s }
-					case "ints":
-						s, pass := handleIntS(val, obj)
-						if !pass { return ret, fmt.Errorf(slice_err, i) } else { ret[i] = s }
-					case "floats":
-						s, pass := handleFloatS(val, obj)
-						if !pass { return ret, fmt.Errorf(slice_err, i) } else { ret[i] = s }
-					default:
-						if len(val) > 1 {
-							return ret, fmt.Errorf("Field \"%s\" sent with multiple values.", i)
+				case "bools":
+					s, pass := handleBoolS(val, obj)
+					if !pass {
+						return ret, fmt.Errorf(slice_err, i)
+					} else {
+						ret[i] = s
+					}
+				case "strings":
+					s, pass := handleStringS(val, obj)
+					if !pass {
+						return ret, fmt.Errorf(slice_err, i)
+					} else {
+						ret[i] = s
+					}
+				case "ints":
+					s, pass := handleIntS(val, obj)
+					if !pass {
+						return ret, fmt.Errorf(slice_err, i)
+					} else {
+						ret[i] = s
+					}
+				case "floats":
+					s, pass := handleFloatS(val, obj)
+					if !pass {
+						return ret, fmt.Errorf(slice_err, i)
+					} else {
+						ret[i] = s
+					}
+				default:
+					if len(val) > 1 {
+						return ret, fmt.Errorf("Field \"%s\" sent with multiple values.", i)
+					}
+					switch typ {
+					case "bool":
+						s, pass := handleBool(val[0], obj)
+						if !pass {
+							return ret, fmt.Errorf(single_err, i)
+						} else {
+							ret[i] = s
 						}
-						switch typ {
-						case "bool":
-							s, pass := handleBool(val[0], obj)
-							if !pass { return ret, fmt.Errorf(single_err, i) } else { ret[i] = s }
-						case "string":
-							s, pass := handleString(val[0], obj)
-							if !pass { return ret, fmt.Errorf(single_err, i) } else { ret[i] = s }
-						case "int":
-							s, pass := handleInt(val[0], obj)
-							if !pass { return ret, fmt.Errorf(single_err, i) } else { ret[i] = s }
-						case "float":
-							s, pass := handleFloat(val[0], obj)
-							if !pass { return ret, fmt.Errorf(single_err, i) } else { ret[i] = s }
-						default:
-							if unknown_type_handler == nil {
-								return ret, fmt.Errorf("Field \"%s\" has unknown type.", i)
+					case "string":
+						s, pass := handleString(val[0], obj)
+						if !pass {
+							return ret, fmt.Errorf(single_err, i)
+						} else {
+							ret[i] = s
+						}
+					case "int":
+						s, pass := handleInt(val[0], obj)
+						if !pass {
+							return ret, fmt.Errorf(single_err, i)
+						} else {
+							ret[i] = s
+						}
+					case "float":
+						s, pass := handleFloat(val[0], obj)
+						if !pass {
+							return ret, fmt.Errorf(single_err, i)
+						} else {
+							ret[i] = s
+						}
+					default:
+						if unknown_type_handler == nil {
+							return ret, fmt.Errorf("Field \"%s\" has unknown type.", i)
+						} else {
+							s, err := unknown_type_handler(val, obj)
+							if err != nil {
+								return ret, fmt.Errorf("Outside field \"%v\" not passed: %v", i, err.Error())
 							} else {
-								s, err := unknown_type_handler(val, obj)
-								if err != nil { return ret, fmt.Errorf("Outside field \"%v\" not passed: %v", i, err.Error()) } else { ret[i] = s }
+								ret[i] = s
 							}
 						}
+					}
 				}
 			}
 		} else if boo, is_bool := v.(bool); is_bool && boo == false {

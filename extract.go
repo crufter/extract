@@ -200,7 +200,6 @@ func (r *Rules) Extract(dat map[string][]string) (map[string]interface{}, error)
 // Only exception if a field does not exist. Then, it will be simply left from ret out unless "must" is specified.
 // If "must" is specified and field does not exist, an error will be raised.
 func (r *Rules) extract(dat map[string][]string, unknown_type_handler func(val []string, rules map[string]interface{}) (interface{}, error)) (map[string]interface{}, error) {
-	fmt.Println(r.R)
 	ret := map[string]interface{}{}
 	// missing := false
 	for i, v := range r.R {
